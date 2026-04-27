@@ -1,0 +1,290 @@
+```text
+You are acting as a senior staff engineer, product-minded frontend architect, and code reviewer.
+
+I am giving you my complete codebase for an AI-powered Self-Serve Analytics BI platform (FastAPI backend + Angular frontend). Before making any code changes, I want you to deeply audit the project and then execute improvements in a structured, production-minded way.
+
+IMPORTANT:
+- Do NOT start changing code immediately.
+- First, analyze the entire codebase and give me a detailed execution plan.
+- The first response must be a full implementation plan only.
+- No code in the first response.
+- No assumptions. Audit first, then propose.
+- Think like a senior engineer reviewing an internship submission that should feel production-grade and polished enough for a Fortune 500 internal analytics tool.
+
+==================================================
+PROJECT CONTEXT
+==================================================
+
+This is an AI-powered Self-Serve Analytics BI platform where:
+
+- Backend: FastAPI
+- Frontend: Angular
+- Auth: JWT
+- Query Engine: LLM-powered NL2SQL
+- Retrieval: Vector search / schema retrieval
+- Data Layer: in-memory analytics on payments dataset
+- Charts: UI chart rendering exists
+- Export: PDF / HTML / Excel export exists
+- Goal: make this look, feel, and behave like a polished enterprise-grade analytics product
+
+Current status:
+- Backend is working
+- Frontend is running
+- Queries execute
+- Some chart rendering works in UI
+- Export works but chart export is unreliable / missing
+- Some queries still return “No data available” when they should not
+- UI works but looks too plain / basic and needs serious visual improvement
+- I want this project to be clean, attractive, production-like, GitHub-ready, and recruiter/impression-ready
+
+==================================================
+YOUR TASK
+==================================================
+
+You must audit the entire codebase and then help me improve it across the following dimensions.
+
+Do this in phases.
+
+==================================================
+PHASE 1 — FULL CODEBASE AUDIT (FIRST RESPONSE ONLY)
+==================================================
+
+Before writing or modifying any code, do a full audit and provide a detailed execution plan.
+
+In your FIRST response, give me:
+
+1. Full codebase audit plan
+2. What files / folders you will inspect
+3. What issues you will verify
+4. What architecture risks you expect
+5. What UI/UX improvements you will target
+6. What backend issues you will validate
+7. What export / chart issues you will inspect
+8. What GitHub-readiness improvements you will make
+9. What documentation improvements you will make
+10. What test coverage / test scenarios you will validate
+11. What performance / latency improvements you will inspect
+12. A clear execution roadmap (phase by phase)
+
+Do NOT write code in phase 1.
+Only provide a full implementation / audit plan.
+
+==================================================
+PHASE 2 — CODEBASE STRUCTURE & ARCHITECTURE REVIEW
+==================================================
+
+After the plan is approved, inspect and improve:
+
+- Full project folder structure
+- Backend architecture
+- Frontend architecture
+- Separation of concerns
+- Service boundaries
+- Component boundaries
+- State flow
+- Reusability
+- Scalability
+- Naming consistency
+- Dead code / duplicate code / tech debt
+
+Then provide:
+- improved code structure
+- recommended refactors
+- component/service map
+- cleaner architecture suggestions
+
+==================================================
+PHASE 3 — BACKEND DEEP REVIEW
+==================================================
+
+Audit backend deeply for:
+
+- FastAPI route structure
+- service layering
+- query pipeline
+- auth flow
+- token handling
+- NL2SQL reliability
+- schema retrieval reliability
+- error handling
+- fallback handling
+- “No data available” false negatives
+- chart generation pipeline
+- export pipeline
+- confidence scoring
+- response consistency
+- logging quality
+- security issues
+- performance bottlenecks
+- latency issues
+- code smell / duplication
+
+Then fix:
+- false “No data available” responses
+- export chart issue
+- weak fallback handling
+- reliability gaps
+- inconsistent responses
+- performance bottlenecks
+
+==================================================
+PHASE 4 — FRONTEND DEEP REVIEW + REDESIGN
+==================================================
+
+Audit frontend deeply for:
+
+- Angular app structure
+- routing
+- component design
+- auth flow
+- token handling
+- dashboard UX
+- query experience
+- chart rendering
+- loading states
+- empty states
+- export UX
+- responsiveness
+- design consistency
+- visual hierarchy
+- typography
+- spacing
+- layout quality
+- enterprise polish
+
+Then redesign UI to feel:
+
+- clean
+- premium
+- modern
+- enterprise
+- minimal
+- polished
+- believable
+- not “AI-generated”
+- not flashy
+- not overdesigned
+- more like Stripe / Notion / Linear / modern enterprise SaaS
+- subtle, elegant, simple, high-trust UI
+
+Target:
+- better layout
+- cleaner cards
+- better nav
+- better query panel
+- better chart presentation
+- better spacing
+- better hierarchy
+- better typography
+- better color system
+- better buttons / inputs
+- better empty/loading states
+- polished enterprise dashboard feel
+
+==================================================
+PHASE 5 — CHART & EXPORT FIXES
+==================================================
+
+Audit and fix chart pipeline end-to-end:
+
+- why charts render in UI
+- why charts fail in export
+- chart spec vs image mismatch
+- export rendering gap
+- PDF rendering
+- HTML rendering
+- fallback behavior
+- chart reliability
+
+Then make chart export stable and production-safe.
+
+==================================================
+PHASE 6 — TEST CASES / VALIDATION
+==================================================
+
+Create test coverage / validation plan for:
+
+- auth
+- login/register
+- query execution
+- valid analytics queries
+- chart-producing queries
+- export
+- edge cases
+- empty responses
+- bad SQL generation
+- invalid tokens
+- frontend loading states
+- error states
+
+Also provide recommended test queries to validate:
+- scalar outputs
+- grouped outputs
+- chart outputs
+- time series outputs
+- export outputs
+
+==================================================
+PHASE 7 — DOCUMENTATION
+==================================================
+
+Rewrite / improve project documentation:
+
+- README.md
+- project overview
+- architecture
+- setup
+- run instructions
+- backend flow
+- frontend flow
+- tech stack
+- component overview
+- service overview
+- export flow
+- chart flow
+- sample queries
+- test cases
+- screenshots guidance
+- recruiter-friendly GitHub presentation
+
+Make it polished and GitHub-ready.
+
+==================================================
+PHASE 8 — GITHUB READINESS
+==================================================
+
+Prepare project for GitHub:
+
+- clean repo structure
+- updated .gitignore
+- remove junk files
+- remove generated artifacts
+- remove secrets
+- remove cache / env noise
+- ensure professional repo hygiene
+- make repo clean for recruiter review
+
+Then provide updated:
+- .gitignore
+- repo cleanup recommendations
+- final push checklist
+
+==================================================
+OUTPUT STYLE
+==================================================
+
+- Think deeply before acting
+- Be structured
+- Be specific
+- Be production-minded
+- Be critical where needed
+- Be honest about weak areas
+- Prioritize practical fixes
+- Focus on enterprise polish
+- Do not rush to code
+- Audit first, then execute in phases
+
+Again:
+FIRST RESPONSE = ONLY THE FULL DETAILED EXECUTION PLAN
+NO CODE IN FIRST RESPONSE
+```
