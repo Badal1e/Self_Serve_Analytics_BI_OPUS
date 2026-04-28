@@ -4,6 +4,11 @@ from typing import Optional
 import pandas as pd
 
 from app.integrations.llm_client import LLMClient
+from app.core.prompts import (
+    ANSWER_SYNTHESIS_WITH_INSIGHT_PROMPT,
+    ANSWER_SYNTHESIS_WITH_DATA_PROMPT,
+    ANSWER_SYNTHESIS_NO_DATA_PROMPT
+)
 
 logger = logging.getLogger(__name__)
 
@@ -19,27 +24,19 @@ class AnswerSynthesisService:
         insight_data: Optional[dict] = None,
     ) -> str:
         if result_df is None or result_df.empty:
-            return "No data available to answer this question."
-
-        if insight_data:
-            prompt = (
-                "You are a business analyst for a payments company.\n\n"
-                "Answer the following question using the computed data. "
-                "Be concise (2-3 sentences), use specific numbers, and clearly indicate "
-                "whether values increased or decreased.\n\n"
-                f"Question: {query}\n\n"
-                f"Current value: {insight_data['current']}\n"
-                f"Previous value: {insight_data['previous']}\n"
-                f"Change: {insight_data['change_pct']}%"
+            prompt = ANSWER_SYNTHESIS_NO_DATA_PROMPT.format(query=query)
+        elif insight_data:
+            prompt = ANSWER_SYNTHESIS_WITH_INSIGHT_PROMPT.format(
+                query=query,
+                current_value=insight_data['current'],
+                previous_value=insight_data['previous'],
+                change_pct=insight_data['change_pct']
             )
         else:
             data_str = result_df.head(50).to_string(index=False)
-            prompt = (
-                "You are a business analyst for a payments company.\n\n"
-                "Answer the following question using the data below. "
-                "Be concise, highlight key numbers, and provide actionable insight.\n\n"
-                f"Question: {query}\n\n"
-                f"Data:\n{data_str}"
+            prompt = ANSWER_SYNTHESIS_WITH_DATA_PROMPT.format(
+                query=query,
+                data_str=data_str
             )
 
         try:

@@ -3,9 +3,11 @@ from __future__ import annotations
 import logging
 import re
 from typing import List
+from datetime import datetime
 
 from app.integrations.llm_client import LLMClient
 from app.core.exceptions import UnsafeSQLException
+from app.core.prompts import NL2SQL_PROMPT_TEMPLATE
 
 logger = logging.getLogger(__name__)
 
@@ -31,18 +33,11 @@ class NL2SQLService:
                 + "\n"
             )
 
-        prompt = (
-            "You are an expert SQL generator for a payments analytics system.\n\n"
-            "RULES:\n"
-            "- Use DuckDB SQL\n"
-            "- The table name is: df\n"
-            "- ONLY SELECT queries\n"
-            "- Use 'created_at' for time filtering\n"
-            "- Use simple SQL (avoid complex date functions if possible)\n"
-            "- Return ONLY SQL\n\n"
-            f"Schema:\n{schema_context}\n"
-            f"{glossary_block}\n"
-            f"Query: {query}"
+        prompt = NL2SQL_PROMPT_TEMPLATE.format(
+            schema_context=schema_context,
+            glossary_block=glossary_block,
+            query=query,
+            current_date=datetime.now().strftime("%Y-%m-%d")
         )
 
         raw_sql = self.llm.chat(prompt, max_tokens=300, temperature=0)
@@ -55,6 +50,16 @@ class NL2SQLService:
         return sql.replace("```sql", "").replace("```", "").strip()
 
     def _validate_safety(self, sql: str) -> None:
+        sql_upper = sql.upper().strip()
+        
+        # Enforce SELECT-only queries
+        if not (sql_upper.startswith("SELECT") or sql_upper.startswith("WITH")):
+            raise UnsafeSQLException("Only SELECT queries are permitted.")
+            
+        # Block multi-statement queries
+        if ";" in sql:
+            raise UnsafeSQLException("Multiple SQL statements are not permitted.")
+
         tokens = set(re.findall(r'\b\w+\b', sql.lower()))
         violations = tokens & UNSAFE_KEYWORDS
         if violations:

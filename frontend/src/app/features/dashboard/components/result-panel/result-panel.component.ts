@@ -6,13 +6,20 @@ import { CommonModule } from '@angular/common';
   standalone: true,
   imports: [CommonModule],
   template: `
-    <div class="result-panel">
-      <h3>Business Insight</h3>
+    <div class="result-panel card">
+      <div class="insight-header">
+        <div class="icon-badge">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+          </svg>
+        </div>
+        <h3>Business Insight</h3>
+      </div>
       <p class="answer-text">{{ answer }}</p>
 
       @if (data && data.length > 0) {
         <div class="data-table-wrapper">
-          <h4>Data</h4>
+          <h4 class="table-title">Raw Data Snapshot</h4>
           <div class="table-scroll">
             <table>
               <thead>
@@ -43,23 +50,61 @@ import { CommonModule } from '@angular/common';
   styles: [
     `
       .result-panel {
-        background: white;
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+      }
+      .card {
+        background: var(--bg-card, #ffffff);
+        border: 1px solid var(--border-light, #e5e7eb);
         border-radius: 12px;
-        padding: 24px;
-        box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+        padding: 20px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      }
+      .insight-header {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+      .icon-badge {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 32px;
+        height: 32px;
+        background: var(--accent-light);
+        color: var(--accent-primary);
+        border-radius: var(--radius-md);
+      }
+      .icon-badge svg {
+        width: 18px;
+        height: 18px;
       }
       h3 {
-        color: #1a1a2e;
-        margin: 0 0 12px;
+        margin: 0;
+        font-size: 1.25rem;
       }
       .answer-text {
-        font-size: 1.05rem;
-        color: #333;
-        line-height: 1.6;
+        font-size: 1.125rem;
+        color: var(--text-secondary);
+        line-height: 1.7;
       }
-      h4 {
-        margin: 20px 0 8px;
-        color: #555;
+      
+      .data-table-wrapper {
+        margin-top: 16px;
+        border: 1px solid var(--border-light);
+        border-radius: var(--radius-md);
+        overflow: hidden;
+      }
+      .table-title {
+        margin: 0;
+        padding: 12px 16px;
+        background: var(--bg-primary);
+        border-bottom: 1px solid var(--border-light);
+        font-size: 0.875rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--text-tertiary);
       }
       .table-scroll {
         overflow-x: auto;
@@ -67,26 +112,36 @@ import { CommonModule } from '@angular/common';
       table {
         width: 100%;
         border-collapse: collapse;
-        font-size: 0.85rem;
+        font-size: 0.875rem;
       }
       th {
-        background: #16213e;
-        color: white;
-        padding: 8px 12px;
+        background: var(--bg-primary);
+        color: var(--text-secondary);
+        font-weight: 500;
+        padding: 10px 16px;
         text-align: left;
         white-space: nowrap;
+        border-bottom: 1px solid var(--border-light);
       }
       td {
-        padding: 8px 12px;
-        border-bottom: 1px solid #eee;
+        padding: 12px 16px;
+        color: var(--text-primary);
+        border-bottom: 1px solid var(--border-light);
+        white-space: nowrap;
+      }
+      tr:last-child td {
+        border-bottom: none;
       }
       tr:hover td {
-        background: #f8f9fa;
+        background: var(--bg-primary);
       }
       .truncation-note {
         font-size: 0.8rem;
-        color: #888;
-        margin-top: 8px;
+        color: var(--text-tertiary);
+        padding: 8px 16px;
+        background: var(--bg-primary);
+        border-top: 1px solid var(--border-light);
+        margin: 0;
       }
     `,
   ],

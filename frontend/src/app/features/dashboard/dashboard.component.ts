@@ -29,29 +29,41 @@ import { ChartDisplayComponent } from '../../shared/components/chart-display/cha
     ChartDisplayComponent,
   ],
   template: `
-    <div class="dashboard">
-      <div class="header">
-        <h1>AI Analytics Assistant</h1>
-        <p class="tagline">Ask business questions and get instant insights</p>
+    <div class="dashboard-container">
+      <div class="header-section animate-enter">
+        <div class="logo-mark">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 3v18h18"></path><path d="M18.7 8l-5.1 5.2-2.8-2.7L7 14.3"></path>
+          </svg>
+        </div>
+        <h1>Analytics Intelligence</h1>
+        <p class="tagline">Natural language data exploration powered by AI.</p>
       </div>
 
-      <app-query-input [loading]="loading" (submitQuery)="onSubmit($event)" />
+      <div class="search-section animate-enter" style="animation-delay: 0.1s;">
+        <app-query-input [loading]="loading" (submitQuery)="onSubmit($event)" />
+      </div>
 
       @if (loading) {
-        <app-loading-spinner message="Analyzing your query..." />
+        <app-loading-spinner message="Analyzing millions of rows..." />
       }
 
       @if (error) {
-        <div class="error-banner">{{ error }}</div>
+        <div class="error-banner animate-enter">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+          <span>{{ error }}</span>
+        </div>
       }
 
-      @if (result) {
-        <div class="results-grid">
+      @if (result && !loading) {
+        <div class="results-layout animate-enter" style="animation-delay: 0.2s;">
           <div class="results-main">
             <app-result-panel [answer]="result.answer" [data]="result.data" />
 
             @if (result.chart) {
-              <app-chart-display [spec]="result.chart" />
+              <div class="card chart-card">
+                <app-chart-display [spec]="result.chart" />
+              </div>
             }
 
             @if (result.sql) {
@@ -59,15 +71,19 @@ import { ChartDisplayComponent } from '../../shared/components/chart-display/cha
             }
           </div>
 
-          <div class="results-sidebar">
-            <app-confidence-badge
-              [score]="result.confidence"
-              [reason]="result.confidence_reason || ''"
-            />
-
-            @if (result.latency_ms) {
-              <div class="latency">Response time: {{ result.latency_ms | number: '1.0-0' }}ms</div>
-            }
+          <aside class="results-sidebar">
+            <div class="meta-card">
+              <app-confidence-badge
+                [score]="result.confidence"
+                [reason]="result.confidence_reason || ''"
+              />
+              @if (result.latency_ms) {
+                <div class="latency-stat">
+                  <span class="label">Query Latency</span>
+                  <span class="value">{{ result.latency_ms | number: '1.0-0' }}ms</span>
+                </div>
+              }
+            </div>
 
             @if (result.hypotheses.length > 0) {
               <app-hypothesis-panel
@@ -76,70 +92,136 @@ import { ChartDisplayComponent } from '../../shared/components/chart-display/cha
               />
             }
 
-            <app-feedback-widget [queryId]="result.id" />
-          </div>
-        </div>
+            <app-followup-panel
+              [suggestions]="result.follow_up_suggestions"
+              (onSelect)="onFollowup($event)"
+            />
 
-        <app-followup-panel
-          [suggestions]="result.follow_up_suggestions"
-          (onSelect)="onFollowup($event)"
-        />
+            <app-feedback-widget [queryId]="result.id" />
+          </aside>
+        </div>
       }
     </div>
   `,
   styles: [
     `
-      .dashboard {
-        max-width: 1200px;
+      .dashboard-container {
+        max-width: 1280px;
         margin: 0 auto;
+        padding: 40px 24px 80px;
       }
-      .header {
-        margin-bottom: 24px;
+      .header-section {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        margin-bottom: 40px;
+      }
+      .logo-mark {
+        width: 48px;
+        height: 48px;
+        background: var(--bg-secondary);
+        border: 1px solid var(--border-light);
+        border-radius: var(--radius-lg);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 16px;
+        box-shadow: var(--shadow-sm);
+        color: var(--accent-primary);
+      }
+      .logo-mark svg {
+        width: 24px;
+        height: 24px;
       }
       h1 {
-        color: #1a1a2e;
-        margin: 0;
-        font-size: 1.8rem;
+        font-size: 2.5rem;
+        font-weight: 700;
+        letter-spacing: -0.04em;
+        margin-bottom: 8px;
       }
       .tagline {
-        color: #888;
-        margin: 4px 0 0;
+        font-size: 1.125rem;
+        color: var(--text-secondary);
       }
+      
+      .search-section {
+        margin-bottom: 32px;
+      }
+
       .error-banner {
-        background: #f8d7da;
-        color: #721c24;
-        padding: 12px 16px;
-        border-radius: 8px;
-        margin-bottom: 16px;
-      }
-      .results-grid {
-        display: grid;
-        grid-template-columns: 1fr 360px;
-        gap: 24px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        background: var(--error-bg);
+        border: 1px solid rgba(239, 68, 68, 0.2);
+        color: var(--error);
+        padding: 16px;
+        border-radius: var(--radius-lg);
         margin-bottom: 24px;
+        font-weight: 500;
+      }
+      .error-banner svg {
+        width: 20px;
+        height: 20px;
+      }
+
+      .results-layout {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 380px;
+        gap: 32px;
+        align-items: start;
       }
       .results-main {
         display: flex;
         flex-direction: column;
-        gap: 16px;
+        gap: 24px;
       }
       .results-sidebar {
         display: flex;
         flex-direction: column;
+        gap: 24px;
+      }
+      
+      .chart-card {
+        padding: 0;
+        overflow: hidden;
+      }
+
+      .meta-card {
+        background: var(--bg-secondary);
+        border: 1px solid var(--border-light);
+        border-radius: var(--radius-lg);
+        padding: 20px;
+        box-shadow: var(--shadow-sm);
+        display: flex;
+        flex-direction: column;
         gap: 16px;
       }
-      .latency {
-        font-size: 0.8rem;
-        color: #888;
-        text-align: center;
+      
+      .latency-stat {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding-top: 16px;
+        border-top: 1px solid var(--border-light);
+        font-size: 0.875rem;
       }
-      @media (max-width: 900px) {
-        .results-grid {
+      .latency-stat .label {
+        color: var(--text-secondary);
+      }
+      .latency-stat .value {
+        font-family: monospace;
+        color: var(--text-tertiary);
+      }
+
+      @media (max-width: 1024px) {
+        .results-layout {
           grid-template-columns: 1fr;
         }
       }
-    `,
-  ],
+    `
+  ]
 })
 export class DashboardComponent {
   private api = inject(ApiService);

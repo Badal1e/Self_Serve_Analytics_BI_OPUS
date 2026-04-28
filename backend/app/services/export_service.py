@@ -15,6 +15,9 @@ HTML_TEMPLATE = """<!DOCTYPE html>
 <head>
     <meta charset="UTF-8">
     <title>Analytics Export - Query #{{ query_id }}</title>
+    <script src="https://cdn.jsdelivr.net/npm/vega@5"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vega-lite@5"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vega-embed@6"></script>
     <style>
         body { font-family: 'Segoe UI', sans-serif; max-width: 900px; margin: 40px auto; padding: 20px; }
         h1 { color: #1a1a2e; }
@@ -61,7 +64,11 @@ HTML_TEMPLATE = """<!DOCTYPE html>
     {% if chart %}
     <div class="section">
         <p class="label">Chart:</p>
-        <img src="{{ chart }}" style="width:100%; max-width:700px;" />
+        <div id="vis"></div>
+        <script>
+            var spec = {{ chart | safe }};
+            vegaEmbed('#vis', spec).catch(console.error);
+        </script>
     </div>
     {% endif %}
 
@@ -118,15 +125,28 @@ class ExportService:
         # 🔥 CHART ADDITION
         if log.chart_spec:
             try:
-                if log.chart_spec.startswith("data:image"):
-                    image_data = base64.b64decode(log.chart_spec.split(",")[1])
-                    img_buffer = io.BytesIO(image_data)
-
+                import json
+                import vl_convert as vlc
+                
+                # Try parsing as JSON first
+                try:
+                    spec = json.loads(log.chart_spec)
+                    # Convert to PNG using vl-convert
+                    png_data = vlc.vegalite_to_png(spec)
+                    img_buffer = io.BytesIO(png_data)
                     story.append(Paragraph("Chart:", styles["Heading2"]))
                     story.append(Image(img_buffer, width=450, height=250))
                     story.append(Spacer(1, 12))
-                else:
-                    logger.warning("Chart format not supported")
+                except json.JSONDecodeError:
+                    # Fallback if it actually was base64 for some reason
+                    if log.chart_spec.startswith("data:image"):
+                        image_data = base64.b64decode(log.chart_spec.split(",")[1])
+                        img_buffer = io.BytesIO(image_data)
+                        story.append(Paragraph("Chart:", styles["Heading2"]))
+                        story.append(Image(img_buffer, width=450, height=250))
+                        story.append(Spacer(1, 12))
+                    else:
+                        logger.warning("Chart format not supported")
 
             except Exception as e:
                 logger.error("Chart rendering failed: %s", e)

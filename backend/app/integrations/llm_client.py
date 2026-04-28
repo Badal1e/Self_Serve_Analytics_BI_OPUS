@@ -17,17 +17,14 @@ def get_llm_client() -> OpenAI:
     global _client
     if _client is None:
         settings = get_settings()
-
-        # 🔥 FIX: disable SSL verification for httpx (used by OpenAI)
-        http_client = httpx.Client(verify=False)
-
+        # Initialize OpenAI client with verify=False to bypass corporate proxies
         _client = OpenAI(
             api_key=settings.openai_api_key,
-            http_client=http_client
+            http_client=httpx.Client(verify=False)
         )
 
         logger.info(
-            "OpenAI client initialized (SSL disabled, model=%s)",
+            "OpenAI client initialized with SSL verification disabled (model=%s)",
             settings.llm_model
         )
 

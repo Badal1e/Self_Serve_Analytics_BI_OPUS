@@ -2,29 +2,14 @@ import logging
 from typing import List
 
 import numpy as np
-import httpx
-
-from openai import OpenAI
 from app.core.config import get_settings
+from app.integrations.llm_client import get_llm_client
 
 logger = logging.getLogger(__name__)
 
-# ----------------------------------------
-# SETTINGS
-# ----------------------------------------
 settings = get_settings()
 
-# ----------------------------------------
-# 🔥 FIX SSL ISSUE (IMPORTANT)
-# ----------------------------------------
-http_client = httpx.Client(verify=False)
-
-client = OpenAI(
-    api_key=settings.openai_api_key,
-    http_client=http_client
-)
-
-logger.info("OpenAI client initialized (SSL verification disabled)")
+client = get_llm_client()
 
 
 # ----------------------------------------

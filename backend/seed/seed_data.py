@@ -1,5 +1,5 @@
 """
-Seed script: generates payments data, populates business glossary and data catalog.
+Seed script: generates users and payments data, populates business glossary and data catalog.
 Run from backend/: python -m seed.seed_data
 """
 
@@ -8,6 +8,7 @@ import os
 import random
 import sqlite3
 
+import numpy as np
 import pandas as pd
 from faker import Faker
 
@@ -24,37 +25,66 @@ from app.models.data_catalog import DataCatalog
 fake = Faker()
 
 
-def generate_payments(n: int = 15000) -> pd.DataFrame:
+def generate_users(n: int = 1000) -> pd.DataFrame:
     data = []
-    for _ in range(n):
+    for i in range(1, n + 1):
+        tier = random.choices(["Free", "Pro", "Enterprise"], weights=[70, 25, 5])[0]
+        data.append({
+            "user_id": i,
+            "subscription_tier": tier,
+            "industry": random.choice(["Retail", "Tech", "Healthcare", "Finance", "Education"]),
+            "signup_date": fake.date_time_between(start_date="-730d", end_date="-365d"),
+            "country": random.choices(["USA", "India", "UK", "Canada"], weights=[50, 30, 10, 10])[0]
+        })
+    df = pd.DataFrame(data)
+    df["signup_date"] = pd.to_datetime(df["signup_date"]).dt.tz_localize(None)
+    return df
+
+
+def generate_payments(users_df: pd.DataFrame, n: int = 15000) -> pd.DataFrame:
+    data = []
+    user_ids = users_df["user_id"].tolist()
+    
+    # Generate log-normal amounts
+    mu, sigma = 3.0, 1.0 # mean and standard dev for lognormal
+    amounts = np.random.lognormal(mu, sigma, n)
+    amounts = np.clip(amounts, 5.0, 5000.0)
+    
+    for i in range(n):
+        status = random.choices(["SUCCESS", "FAILED", "PENDING"], weights=[88, 10, 2])[0]
+        
+        # Make failures slightly more common on weekends
+        created_at = fake.date_time_between(start_date="-365d", end_date="now")
+        if created_at.weekday() >= 5 and random.random() < 0.2:
+            status = "FAILED"
+            
         data.append({
             "txn_id": fake.uuid4(),
-            "user_id": random.randint(1000, 1100),
-            "amount": round(random.uniform(10, 1000), 2),
-            "status": random.choice(["SUCCESS", "FAILED", "PENDING"]),
-            "payment_method": random.choice(["CARD", "UPI", "WALLET"]),
-            "country": random.choice(["India", "USA", "UK"]),
-            "created_at": fake.date_time_between(start_date="-365d", end_date="now"),
+            "user_id": random.choice(user_ids),
+            "amount": round(float(amounts[i]), 2),
+            "status": status,
+            "payment_method": random.choices(["CARD", "UPI", "WALLET", "BANK_TRANSFER"], weights=[60, 20, 10, 10])[0],
+            "created_at": created_at,
         })
     df = pd.DataFrame(data)
     df["created_at"] = pd.to_datetime(df["created_at"]).dt.tz_localize(None)
     return df
 
 
-def seed_payments_db():
+def seed_analytics_db():
     settings = get_settings()
     db_path = settings.payments_db_path
     os.makedirs(os.path.dirname(db_path) or ".", exist_ok=True)
 
-    if os.path.exists(db_path):
-        print(f"Payments DB already exists at {db_path}, skipping generation.")
-        return
-
-    df = generate_payments(settings.payments_row_count)
+    users_df = generate_users(1000)
+    payments_df = generate_payments(users_df, settings.payments_row_count)
+    
     conn = sqlite3.connect(db_path)
-    df.to_sql("payments", conn, index=False, if_exists="replace")
+    users_df.to_sql("users", conn, index=False, if_exists="replace")
+    payments_df.to_sql("payments", conn, index=False, if_exists="replace")
     conn.close()
-    print(f"Created payments DB with {len(df)} rows at {db_path}")
+    
+    print(f"Created Analytics DB with {len(users_df)} users and {len(payments_df)} payments at {db_path}")
 
 
 def seed_admin_user(session):
@@ -76,8 +106,8 @@ def seed_admin_user(session):
 
 def seed_glossary(session):
     if session.query(BusinessGlossary).count() > 0:
-        print("Glossary already seeded.")
-        return
+        session.query(BusinessGlossary).delete()
+        session.commit()
 
     entries = [
         BusinessGlossary(
@@ -95,17 +125,10 @@ def seed_glossary(session):
             created_by=1,
         ),
         BusinessGlossary(
-            term="Failures",
-            definition="Number of failed payment transactions",
-            sql_expression="COUNT(*) WHERE status='FAILED'",
-            category="Quality",
-            created_by=1,
-        ),
-        BusinessGlossary(
-            term="Average Transaction Value",
-            definition="Mean amount per transaction",
-            sql_expression="AVG(amount)",
-            category="Financial",
+            term="Pro Users",
+            definition="Users who are subscribed to the Pro tier",
+            sql_expression="subscription_tier = 'Pro'",
+            category="Users",
             created_by=1,
         ),
         BusinessGlossary(
@@ -123,65 +146,55 @@ def seed_glossary(session):
 
 def seed_catalog(session):
     if session.query(DataCatalog).count() > 0:
-        print("Catalog already seeded.")
-        return
+        session.query(DataCatalog).delete()
+        session.commit()
 
     columns = [
+        # Users Table
         DataCatalog(
-            table_name="payments",
-            column_name="txn_id",
-            data_type="VARCHAR",
-            description="Unique transaction identifier (UUID)",
-            sample_values=["a1b2c3d4-...", "e5f6g7h8-..."],
-            is_pii=False,
+            table_name="users", column_name="user_id", data_type="INTEGER",
+            description="Numeric identifier for the user", sample_values=[1001, 1050], is_pii=True,
         ),
         DataCatalog(
-            table_name="payments",
-            column_name="user_id",
-            data_type="INTEGER",
-            description="Numeric identifier for the user who initiated the payment",
-            sample_values=[1001, 1050, 1099],
-            is_pii=True,
+            table_name="users", column_name="subscription_tier", data_type="VARCHAR",
+            description="The pricing tier the user is on", sample_values=["Free", "Pro", "Enterprise"], is_pii=False,
         ),
         DataCatalog(
-            table_name="payments",
-            column_name="amount",
-            data_type="FLOAT",
-            description="Transaction amount in the local currency",
-            sample_values=[10.50, 250.00, 999.99],
-            is_pii=False,
+            table_name="users", column_name="industry", data_type="VARCHAR",
+            description="The business sector of the user", sample_values=["Tech", "Retail", "Healthcare"], is_pii=False,
         ),
         DataCatalog(
-            table_name="payments",
-            column_name="status",
-            data_type="VARCHAR",
-            description="Transaction outcome status",
-            sample_values=["SUCCESS", "FAILED", "PENDING"],
-            is_pii=False,
+            table_name="users", column_name="signup_date", data_type="TIMESTAMP",
+            description="When the user joined", sample_values=["2025-01-01 10:00:00"], is_pii=False,
         ),
         DataCatalog(
-            table_name="payments",
-            column_name="payment_method",
-            data_type="VARCHAR",
-            description="Payment method used for the transaction",
-            sample_values=["CARD", "UPI", "WALLET"],
-            is_pii=False,
+            table_name="users", column_name="country", data_type="VARCHAR",
+            description="Country where the user is based", sample_values=["USA", "India"], is_pii=False,
+        ),
+        # Payments Table
+        DataCatalog(
+            table_name="payments", column_name="txn_id", data_type="VARCHAR",
+            description="Unique transaction identifier (UUID)", sample_values=["a1b2c3d4-..."], is_pii=False,
         ),
         DataCatalog(
-            table_name="payments",
-            column_name="country",
-            data_type="VARCHAR",
-            description="Country where the transaction originated",
-            sample_values=["India", "USA", "UK"],
-            is_pii=False,
+            table_name="payments", column_name="user_id", data_type="INTEGER",
+            description="Numeric identifier for the user who initiated the payment", sample_values=[1001, 1050], is_pii=True,
         ),
         DataCatalog(
-            table_name="payments",
-            column_name="created_at",
-            data_type="TIMESTAMP",
-            description="Date and time when the transaction was created",
-            sample_values=["2025-06-15 10:30:00", "2026-01-20 14:15:00"],
-            is_pii=False,
+            table_name="payments", column_name="amount", data_type="FLOAT",
+            description="Transaction amount in the local currency", sample_values=[10.50, 250.00], is_pii=False,
+        ),
+        DataCatalog(
+            table_name="payments", column_name="status", data_type="VARCHAR",
+            description="Transaction outcome status", sample_values=["SUCCESS", "FAILED", "PENDING"], is_pii=False,
+        ),
+        DataCatalog(
+            table_name="payments", column_name="payment_method", data_type="VARCHAR",
+            description="Payment method used", sample_values=["CARD", "UPI", "WALLET", "BANK_TRANSFER"], is_pii=False,
+        ),
+        DataCatalog(
+            table_name="payments", column_name="created_at", data_type="TIMESTAMP",
+            description="Date and time when the transaction was created", sample_values=["2025-06-15 10:30:00"], is_pii=False,
         ),
     ]
     session.add_all(columns)
@@ -193,7 +206,7 @@ def main():
     Base.metadata.create_all(bind=engine)
     print("Database tables created.")
 
-    seed_payments_db()
+    seed_analytics_db()
 
     session = SessionLocal()
     try:

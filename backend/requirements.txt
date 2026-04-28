@@ -36,6 +36,7 @@ httpx==0.28.1
 
 # Charting
 altair==5.5.0
+vl-convert-python==1.7.0
 
 # Testing
 pytest==8.3.4
