@@ -44,28 +44,30 @@ def generate_users(n: int = 1000) -> pd.DataFrame:
 def generate_payments(users_df: pd.DataFrame, n: int = 15000) -> pd.DataFrame:
     data = []
     user_ids = users_df["user_id"].tolist()
-    
-    # Generate log-normal amounts
-    mu, sigma = 3.0, 1.0 # mean and standard dev for lognormal
+
+    mu, sigma = 3.0, 1.0
     amounts = np.random.lognormal(mu, sigma, n)
     amounts = np.clip(amounts, 5.0, 5000.0)
-    
+
     for i in range(n):
         status = random.choices(["SUCCESS", "FAILED", "PENDING"], weights=[88, 10, 2])[0]
-        
-        # Make failures slightly more common on weekends
+
         created_at = fake.date_time_between(start_date="-365d", end_date="now")
         if created_at.weekday() >= 5 and random.random() < 0.2:
             status = "FAILED"
-            
+
         data.append({
             "txn_id": fake.uuid4(),
             "user_id": random.choice(user_ids),
             "amount": round(float(amounts[i]), 2),
             "status": status,
-            "payment_method": random.choices(["CARD", "UPI", "WALLET", "BANK_TRANSFER"], weights=[60, 20, 10, 10])[0],
+            "payment_method": random.choices(
+                ["CARD", "UPI", "WALLET", "BANK_TRANSFER"],
+                weights=[60, 20, 10, 10]
+            )[0],
             "created_at": created_at,
         })
+
     df = pd.DataFrame(data)
     df["created_at"] = pd.to_datetime(df["created_at"]).dt.tz_localize(None)
     return df
@@ -78,30 +80,30 @@ def seed_analytics_db():
 
     users_df = generate_users(1000)
     payments_df = generate_payments(users_df, settings.payments_row_count)
-    
+
     conn = sqlite3.connect(db_path)
     users_df.to_sql("users", conn, index=False, if_exists="replace")
     payments_df.to_sql("payments", conn, index=False, if_exists="replace")
     conn.close()
-    
+
     print(f"Created Analytics DB with {len(users_df)} users and {len(payments_df)} payments at {db_path}")
 
 
 def seed_admin_user(session):
-    existing = session.query(User).filter(User.email == "admin@analytics.local").first()
+    existing = session.query(User).filter(User.email == "admin@analytics.com").first()
     if existing:
         print("Admin user already exists.")
         return
 
     admin = User(
-        email="admin@analytics.local",
+        email="admin@analytics.com",
         hashed_password=hash_password("admin123!"),
         full_name="System Admin",
         role="admin",
     )
     session.add(admin)
     session.commit()
-    print("Created admin user: admin@analytics.local / admin123!")
+    print("Created admin user: admin@analytics.com / admin123!")
 
 
 def seed_glossary(session):
@@ -150,10 +152,9 @@ def seed_catalog(session):
         session.commit()
 
     columns = [
-        # Users Table
         DataCatalog(
             table_name="users", column_name="user_id", data_type="INTEGER",
-            description="Numeric identifier for the user", sample_values=[1001, 1050], is_pii=True,
+            description="Numeric identifier for the user", sample_values=[1001, 1050], is_pii=False,
         ),
         DataCatalog(
             table_name="users", column_name="subscription_tier", data_type="VARCHAR",
@@ -171,14 +172,13 @@ def seed_catalog(session):
             table_name="users", column_name="country", data_type="VARCHAR",
             description="Country where the user is based", sample_values=["USA", "India"], is_pii=False,
         ),
-        # Payments Table
         DataCatalog(
             table_name="payments", column_name="txn_id", data_type="VARCHAR",
             description="Unique transaction identifier (UUID)", sample_values=["a1b2c3d4-..."], is_pii=False,
         ),
         DataCatalog(
             table_name="payments", column_name="user_id", data_type="INTEGER",
-            description="Numeric identifier for the user who initiated the payment", sample_values=[1001, 1050], is_pii=True,
+            description="Numeric identifier for the user who initiated the payment", sample_values=[1001, 1050], is_pii=False,
         ),
         DataCatalog(
             table_name="payments", column_name="amount", data_type="FLOAT",

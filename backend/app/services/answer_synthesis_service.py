@@ -23,6 +23,8 @@ class AnswerSynthesisService:
         result_df: Optional[pd.DataFrame],
         insight_data: Optional[dict] = None,
     ) -> str:
+        anomaly_text = self.detect_anomalies(result_df)
+
         if result_df is None or result_df.empty:
             prompt = ANSWER_SYNTHESIS_NO_DATA_PROMPT.format(query=query)
         elif insight_data:
@@ -38,12 +40,42 @@ class AnswerSynthesisService:
                 query=query,
                 data_str=data_str
             )
+            
+        if anomaly_text:
+            prompt += f"\n\nAlso include this important note in your response: {anomaly_text}"
 
         try:
             return self.llm.chat(prompt, max_tokens=300)
         except Exception as e:
             logger.warning("Answer synthesis failed: %s", e)
             return "Unable to generate a natural language answer at this time."
+
+    @staticmethod
+    def detect_anomalies(df: Optional[pd.DataFrame]) -> str:
+        if df is None or df.empty:
+            return ""
+        
+        anomalies = []
+        for col in df.columns:
+            null_count = df[col].isnull().sum()
+            if null_count > 0:
+                null_pct = null_count / len(df)
+                if null_pct > 0.2:
+                    anomalies.append(f"Column '{col}' has {null_pct*100:.0f}% missing values.")
+
+        for col in df.select_dtypes(include=['number']).columns:
+            if not df[col].isnull().all() and len(df) > 2:
+                mean = df[col].mean()
+                std = df[col].std()
+                if std > 0:
+                    z_scores = (df[col] - mean) / std
+                    outliers = df[z_scores.abs() > 3]
+                    if not outliers.empty:
+                        anomalies.append(f"Column '{col}' contains {len(outliers)} unusual outlier(s).")
+                        
+        if anomalies:
+            return " ".join(anomalies)
+        return ""
 
     @staticmethod
     def compute_insight(df: Optional[pd.DataFrame]) -> Optional[dict]:

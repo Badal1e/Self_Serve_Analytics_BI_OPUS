@@ -24,6 +24,7 @@ import {
             <thead>
               <tr>
                 <th>ID</th>
+                <th>User</th>
                 <th>Query</th>
                 <th>Answer</th>
                 <th>Confidence</th>
@@ -35,6 +36,7 @@ import {
               @for (item of items; track item.id) {
                 <tr>
                   <td>{{ item.id }}</td>
+                  <td>{{ item.user_email || 'You' }}</td>
                   <td class="query-cell">{{ item.natural_language_query }}</td>
                   <td class="answer-cell">{{ item.answer_text || 'N/A' }}</td>
                   <td>

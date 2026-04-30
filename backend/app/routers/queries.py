@@ -32,12 +32,25 @@ def list_queries(
 ):
     repo = QueryLogRepository(db)
     skip = (page - 1) * page_size
-    items = repo.get_by_user(current_user.id, skip=skip, limit=page_size)
-    total = repo.count_by_user(current_user.id)
+    
+    if current_user.role == "admin":
+        items = repo.get_all_paginated(skip=skip, limit=page_size)
+        total = repo.count_all()
+    else:
+        items = repo.get_by_user(current_user.id, skip=skip, limit=page_size)
+        total = repo.count_by_user(current_user.id)
+        
     total_pages = (total + page_size - 1) // page_size
 
     return PaginatedResponse(
-        items=[QueryHistoryItem.model_validate(i) for i in items],
+        items=[QueryHistoryItem(
+            id=i.id,
+            natural_language_query=i.natural_language_query,
+            answer_text=i.answer_text,
+            confidence_score=i.confidence_score,
+            created_at=i.created_at,
+            user_email=i.user.email if i.user else None
+        ) for i in items],
         total=total,
         page=page,
         page_size=page_size,
@@ -53,7 +66,11 @@ def get_query(
 ):
     repo = QueryLogRepository(db)
     log = repo.get_by_id(query_id)
-    if log is None or log.user_id != current_user.id:
+    
+    if log is None:
+        raise NotFoundException("Query not found")
+        
+    if log.user_id != current_user.id and current_user.role != "admin":
         raise NotFoundException("Query not found")
 
     return QueryResponse(

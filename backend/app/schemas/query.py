@@ -27,6 +27,7 @@ class QueryResponse(BaseModel):
     id: int
     answer: str
     sql: Optional[str] = None
+    explanation: Optional[str] = None
     data: List[Any] = []
     hypotheses: List[str] = []
     best_hypothesis: Optional[HypothesisResult] = None
@@ -45,5 +46,6 @@ class QueryHistoryItem(BaseModel):
     answer_text: Optional[str] = None
     confidence_score: Optional[float] = None
     created_at: Optional[datetime] = None
+    user_email: Optional[str] = None
 
     model_config = {"from_attributes": True}

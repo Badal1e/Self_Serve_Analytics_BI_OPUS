@@ -22,6 +22,7 @@ from app.services.confidence_service import ConfidenceService
 from app.services.followup_service import FollowupService
 from app.services.governance_service import GovernanceService
 from app.schemas.query import QueryResponse, HypothesisResult, ProvenanceInfo
+from app.core.utils import sanitize_for_json
 
 logger = logging.getLogger(__name__)
 
@@ -60,8 +61,9 @@ class PipelineService:
 
         # 6. NL2SQL Generation
         nl2sql_service = NL2SQLService(self.llm)
+        explanation = None
         try:
-            sql = nl2sql_service.generate(query, schema_context, glossary_defs)
+            sql, explanation = nl2sql_service.generate(query, schema_context, glossary_defs)
         except Exception as e:
             logger.error("NL2SQL failed: %s", e)
             return self._error_response(query, str(e), session_id, start_time)
@@ -111,31 +113,60 @@ class PipelineService:
         # 14. Persist to audit log
         data_records = result_df.head(100).to_dict(orient="records") if result_df is not None else []
 
+        safe_parsed = sanitize_for_json(parsed)
+        safe_hypotheses = sanitize_for_json(hypotheses)
+        safe_best_hypothesis = sanitize_for_json(best_hypothesis)
+        safe_result_summary = sanitize_for_json({"data": data_records, "row_count": row_count, "explanation": explanation})
+        safe_chart_spec = sanitize_for_json(chart_spec)
+        safe_follow_ups = sanitize_for_json(follow_ups)
+        safe_provenance = sanitize_for_json(provenance.model_dump())
+
         log = QueryLog(
             user_id=self.user.id,
             session_id=session_id,
             natural_language_query=query,
             generated_sql=sql,
-            parsed_intent=parsed,
-            hypotheses=hypotheses,
-            best_hypothesis=best_hypothesis,
-            result_summary={"data": data_records, "row_count": row_count},
+            parsed_intent=safe_parsed,
+            hypotheses=safe_hypotheses,
+            best_hypothesis=safe_best_hypothesis,
+            result_summary=safe_result_summary,
             confidence_score=confidence,
             confidence_reason=confidence_reason,
-            chart_spec=chart_spec,
+            chart_spec=safe_chart_spec,
             answer_text=answer,
-            follow_up_suggestions=follow_ups,
-            provenance=provenance.model_dump(),
+            follow_up_suggestions=safe_follow_ups,
+            provenance=safe_provenance,
             llm_tokens_used=self.llm.total_tokens_used,
             latency_ms=round(elapsed_ms, 1),
         )
         repo = QueryLogRepository(self.db)
-        repo.create(log)
+        
+        try:
+            repo.create(log)
+        except Exception as e:
+            logger.error("Failed to persist QueryLog. Checking JSON fields for un-serializable objects.")
+            import json
+            fields_to_check = {
+                "parsed_intent": safe_parsed,
+                "hypotheses": safe_hypotheses,
+                "best_hypothesis": safe_best_hypothesis,
+                "result_summary": safe_result_summary,
+                "chart_spec": safe_chart_spec,
+                "follow_up_suggestions": safe_follow_ups,
+                "provenance": safe_provenance
+            }
+            for field, val in fields_to_check.items():
+                try:
+                    json.dumps(val)
+                except Exception as je:
+                    logger.error(f"Field '{field}' failed serialization: {je} (type: {type(val)})")
+            raise
 
         return QueryResponse(
             id=log.id,
             answer=answer,
             sql=sql,
+            explanation=explanation,
             data=data_records,
             hypotheses=hypotheses,
             best_hypothesis=(
@@ -160,11 +191,13 @@ class PipelineService:
     ) -> QueryResponse:
         elapsed_ms = (time.perf_counter() - start_time) * 1000
 
+        error_message = error if error.startswith("Security Alert:") else f"Error: {error}"
+
         log = QueryLog(
             user_id=self.user.id,
             session_id=session_id,
             natural_language_query=query,
-            answer_text=f"Error: {error}",
+            answer_text=error_message,
             confidence_score=0.0,
             confidence_reason=error,
             latency_ms=round(elapsed_ms, 1),
@@ -175,7 +208,7 @@ class PipelineService:
 
         return QueryResponse(
             id=log.id,
-            answer=f"Error: {error}",
+            answer=error_message,
             confidence=0.0,
             confidence_reason=error,
             latency_ms=round(elapsed_ms, 1),

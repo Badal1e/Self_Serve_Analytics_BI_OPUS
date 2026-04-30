@@ -58,7 +58,7 @@ import { ChartDisplayComponent } from '../../shared/components/chart-display/cha
       @if (result && !loading) {
         <div class="results-layout animate-enter" style="animation-delay: 0.2s;">
           <div class="results-main">
-            <app-result-panel [answer]="result.answer" [data]="result.data" />
+            <app-result-panel [answer]="result.answer" [data]="result.data" [explanation]="result.explanation" />
 
             @if (result.chart) {
               <div class="card chart-card">

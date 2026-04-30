@@ -128,9 +128,9 @@ class ExportService:
                 import json
                 import vl_convert as vlc
                 
-                # Try parsing as JSON first
+                # Handle both string (JSON) and dict cases
                 try:
-                    spec = json.loads(log.chart_spec)
+                    spec = log.chart_spec if isinstance(log.chart_spec, dict) else json.loads(log.chart_spec)
                     # Convert to PNG using vl-convert
                     png_data = vlc.vegalite_to_png(spec)
                     img_buffer = io.BytesIO(png_data)
@@ -150,6 +150,37 @@ class ExportService:
 
             except Exception as e:
                 logger.error("Chart rendering failed: %s", e)
+
+        # Data Summary Table
+        data = log.result_summary.get("data", []) if log.result_summary else []
+        if data:
+            try:
+                from reportlab.platypus import Table, TableStyle
+                from reportlab.lib import colors
+                
+                story.append(Paragraph("Data Summary (Top 20 rows):", styles["Heading2"]))
+                
+                df = pd.DataFrame(data).head(20)
+                columns = list(df.columns)
+                table_data = [columns] + df.values.tolist()
+                
+                table_data = [[str(cell)[:50] for cell in row] for row in table_data]
+                
+                t = Table(table_data)
+                t.setStyle(TableStyle([
+                    ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#16213e')),
+                    ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+                    ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+                    ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                    ('FONTSIZE', (0, 0), (-1, 0), 10),
+                    ('BOTTOMPADDING', (0, 0), (-1, 0), 8),
+                    ('BACKGROUND', (0, 1), (-1, -1), colors.HexColor('#f9f9f9')),
+                    ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#dddddd'))
+                ]))
+                story.append(t)
+                story.append(Spacer(1, 12))
+            except Exception as e:
+                logger.error("Failed to add data table to PDF: %s", e)
 
         doc.build(story)
         buf.seek(0)
@@ -190,7 +221,9 @@ class ExportService:
 
         data_html = df.to_html(index=False, classes="data-table") if not df.empty else ""
 
-        template = Template(HTML_TEMPLATE)
+        import json
+        chart_str = json.dumps(log.chart_spec) if isinstance(log.chart_spec, dict) else log.chart_spec
+
         html_content = template.render(
             query_id=log.id,
             question=log.natural_language_query,
@@ -199,7 +232,7 @@ class ExportService:
             confidence_reason=log.confidence_reason or "N/A",
             sql=log.generated_sql or "N/A",
             data_html=data_html,
-            chart=log.chart_spec  # 🔥 KEY FIX
+            chart=chart_str
         )
 
         buf = io.BytesIO(html_content.encode("utf-8"))
