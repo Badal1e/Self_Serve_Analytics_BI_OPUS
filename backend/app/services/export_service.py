@@ -14,63 +14,180 @@ HTML_TEMPLATE = """<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Analytics Export - Query #{{ query_id }}</title>
     <script src="https://cdn.jsdelivr.net/npm/vega@5"></script>
     <script src="https://cdn.jsdelivr.net/npm/vega-lite@5"></script>
     <script src="https://cdn.jsdelivr.net/npm/vega-embed@6"></script>
     <style>
-        body { font-family: 'Segoe UI', sans-serif; max-width: 900px; margin: 40px auto; padding: 20px; }
-        h1 { color: #1a1a2e; }
-        .section { margin: 24px 0; }
-        .label { font-weight: bold; color: #555; }
-        pre { background: #f4f4f4; padding: 16px; border-radius: 8px; overflow-x: auto; }
-        table { border-collapse: collapse; width: 100%; }
-        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-        th { background: #16213e; color: white; }
-        .confidence { font-size: 1.2em; color: #e94560; }
-        img { margin-top: 10px; border-radius: 8px; }
+        :root {
+            --bg-color: #f8fafc;
+            --card-bg: #ffffff;
+            --text-main: #1e293b;
+            --text-muted: #64748b;
+            --primary: #2563eb;
+            --border: #e2e8f0;
+            --success: #10b981;
+            --warning: #f59e0b;
+        }
+        body { 
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            max-width: 1000px; 
+            margin: 0 auto; 
+            padding: 40px 20px;
+            line-height: 1.6;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+        h1 { 
+            color: var(--text-main);
+            font-size: 2rem;
+            font-weight: 700;
+            margin: 0 0 8px 0;
+            letter-spacing: -0.02em;
+        }
+        .subtitle {
+            color: var(--text-muted);
+            font-size: 1rem;
+            margin: 0;
+        }
+        .card {
+            background: var(--card-bg);
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+            padding: 32px;
+            margin-bottom: 24px;
+            border: 1px solid var(--border);
+        }
+        .section-title { 
+            font-weight: 600; 
+            color: var(--text-muted); 
+            text-transform: uppercase;
+            font-size: 0.85rem;
+            letter-spacing: 0.05em;
+            margin: 0 0 12px 0;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 8px;
+        }
+        .content {
+            font-size: 1.1rem;
+            margin: 0;
+        }
+        pre { 
+            background: #f1f5f9; 
+            padding: 20px; 
+            border-radius: 8px; 
+            overflow-x: auto;
+            font-family: 'JetBrains Mono', 'Fira Code', monospace;
+            font-size: 0.9rem;
+            border: 1px solid var(--border);
+            color: #334155;
+            margin: 0;
+        }
+        .table-container {
+            overflow-x: auto;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+        }
+        table { 
+            border-collapse: collapse; 
+            width: 100%;
+            background: white;
+            font-size: 0.95rem;
+        }
+        th, td { 
+            padding: 12px 16px; 
+            text-align: left; 
+            border-bottom: 1px solid var(--border);
+        }
+        th { 
+            background: #f8fafc; 
+            color: var(--text-muted);
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 0.8rem;
+            letter-spacing: 0.05em;
+        }
+        tr:last-child td { border-bottom: none; }
+        tr:hover td { background-color: #f8fafc; }
+        .confidence-badge { 
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: #f0fdf4;
+            color: var(--success);
+            padding: 6px 12px;
+            border-radius: 9999px;
+            font-weight: 600;
+            font-size: 0.95rem;
+            border: 1px solid #bbf7d0;
+        }
+        .confidence-badge.low {
+            background: #fffbeb;
+            color: var(--warning);
+            border-color: #fde68a;
+        }
+        #vis {
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            margin-top: 16px;
+        }
     </style>
 </head>
 <body>
-    <h1>Query #{{ query_id }}</h1>
-
-    <div class="section">
-        <p class="label">Question:</p>
-        <p>{{ question }}</p>
+    <div class="header">
+        <h1>Analytics Report</h1>
+        <p class="subtitle">Query #{{ query_id }} • Generated automatically</p>
     </div>
 
-    <div class="section">
-        <p class="label">Answer:</p>
-        <p>{{ answer }}</p>
+    <div class="card">
+        <h2 class="section-title">Question</h2>
+        <p class="content" style="font-weight: 500; font-size: 1.25rem;">{{ question }}</p>
     </div>
 
-    <div class="section">
-        <p class="label">Confidence:</p>
-        <p class="confidence">{{ confidence }}% - {{ confidence_reason }}</p>
+    <div class="card">
+        <h2 class="section-title">AI Synthesis</h2>
+        <p class="content">{{ answer }}</p>
+        
+        <div style="margin-top: 24px;">
+            <h2 class="section-title">Confidence</h2>
+            <div class="confidence-badge {% if confidence < 65 %}low{% endif %}">
+                {{ confidence }}% - {{ confidence_reason }}
+            </div>
+        </div>
     </div>
-
-    <div class="section">
-        <p class="label">Generated SQL:</p>
-        <pre>{{ sql }}</pre>
-    </div>
-
-    {% if data_html %}
-    <div class="section">
-        <p class="label">Data:</p>
-        {{ data_html }}
-    </div>
-    {% endif %}
 
     {% if chart %}
-    <div class="section">
-        <p class="label">Chart:</p>
+    <div class="card">
+        <h2 class="section-title">Visualization</h2>
         <div id="vis"></div>
         <script>
             var spec = {{ chart | safe }};
-            vegaEmbed('#vis', spec).catch(console.error);
+            // Dynamically adjust width to container
+            spec.width = "container";
+            vegaEmbed('#vis', spec, {actions: false}).catch(console.error);
         </script>
     </div>
     {% endif %}
+
+    {% if data_html %}
+    <div class="card">
+        <h2 class="section-title">Data Snapshot</h2>
+        <div class="table-container">
+            {{ data_html }}
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="card">
+        <h2 class="section-title">Execution Provenance</h2>
+        <pre><code>{{ sql }}</code></pre>
+    </div>
 
 </body>
 </html>"""
@@ -223,6 +340,8 @@ class ExportService:
 
         import json
         chart_str = json.dumps(log.chart_spec) if isinstance(log.chart_spec, dict) else log.chart_spec
+
+        template = Template(HTML_TEMPLATE)
 
         html_content = template.render(
             query_id=log.id,

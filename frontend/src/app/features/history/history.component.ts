@@ -5,11 +5,12 @@ import {
   QueryHistoryItem,
   PaginatedResponse,
 } from '../../core/models/query.model';
+import { MarkdownPipe } from '../../shared/pipes/markdown.pipe';
 
 @Component({
   selector: 'app-history',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, MarkdownPipe],
   template: `
     <div class="history-page">
       <h2>Query History</h2>
@@ -38,7 +39,9 @@ import {
                   <td>{{ item.id }}</td>
                   <td>{{ item.user_email || 'You' }}</td>
                   <td class="query-cell">{{ item.natural_language_query }}</td>
-                  <td class="answer-cell">{{ item.answer_text || 'N/A' }}</td>
+                  <td class="answer-cell">
+                    <div class="markdown-content" [innerHTML]="(item.answer_text | markdown) || 'N/A'"></div>
+                  </td>
                   <td>
                     @if (item.confidence_score !== null && item.confidence_score !== undefined) {
                       {{ (item.confidence_score * 100).toFixed(0) }}%

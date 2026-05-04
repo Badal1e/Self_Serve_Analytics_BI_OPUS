@@ -1,11 +1,12 @@
 import { Component, Input, OnChanges, SimpleChanges } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { MarkdownPipe } from '../../../../shared/pipes/markdown.pipe';
 
 @Component({
   selector: 'app-result-panel',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, MarkdownPipe],
   template: `
     <div class="result-panel card">
       <div class="insight-header">
@@ -16,7 +17,7 @@ import { FormsModule } from '@angular/forms';
         </div>
         <h3>Business Insight</h3>
       </div>
-      <p class="answer-text">{{ answer }}</p>
+      <div class="answer-text markdown-content" [innerHTML]="answer | markdown"></div>
 
       @if (explanation) {
         <details class="explanation-details">
@@ -132,6 +133,16 @@ import { FormsModule } from '@angular/forms';
         font-size: 1.125rem;
         color: var(--text-secondary);
         line-height: 1.7;
+      }
+      .markdown-content p {
+        margin: 0 0 12px 0;
+      }
+      .markdown-content p:last-child {
+        margin-bottom: 0;
+      }
+      .markdown-content strong {
+        color: var(--text-primary);
+        font-weight: 600;
       }
       
       .data-table-wrapper {
