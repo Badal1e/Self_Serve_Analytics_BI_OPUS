@@ -30,7 +30,10 @@ It removes the bottleneck of relying on data engineering and analytics teams for
 - Translates natural language questions into complex, multi-table SQL queries.
 - Executes queries against an analytical database (DuckDB).
 - Automatically selects the best chart type to visualize the results.
-- Synthesizes a natural language answer explaining the data.
+- Synthesizes a natural language answer explaining the data with contextual follow-up suggestions.
+- Highlights key business metrics (currency, percentages) via custom Markdown rendering.
+- Persists chat histories in a sidebar, grouping sessions intelligently by date.
+- Provides an Admin oversight dashboard ("Team Chats") to audit organizational query patterns.
 - Allows one-click export of data and charts into PDF and Excel reports.
 
 **High-level system purpose:**

@@ -23,6 +23,7 @@ class NL2SQLService:
         query: str,
         schema_context: str,
         glossary_definitions: List[str] | None = None,
+        context_block: str = "",
     ) -> tuple[str, str]:
 
         glossary_block = ""
@@ -37,7 +38,8 @@ class NL2SQLService:
             schema_context=schema_context,
             glossary_block=glossary_block,
             query=query,
-            current_date=datetime.now().strftime("%Y-%m-%d")
+            current_date=datetime.now().strftime("%Y-%m-%d"),
+            context_block=context_block,
         )
 
         raw_response = self.llm.chat(prompt, max_tokens=300, temperature=0)

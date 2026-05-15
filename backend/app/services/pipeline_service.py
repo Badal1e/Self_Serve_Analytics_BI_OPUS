@@ -37,41 +37,39 @@ class PipelineService:
     def run(self, query: str, session_id: Optional[str] = None) -> QueryResponse:
         start_time = time.perf_counter()
 
-        # 1. Schema Retrieval (RAG)
+        # Schema Retrieval & Query Understanding
         schema_service = SchemaRetrievalService(self.db)
         schema_context = schema_service.retrieve(query)
 
-        # 2. Query Understanding
         qu_service = QueryUnderstandingService(self.llm)
         parsed = qu_service.parse(query)
         metric = parsed.get("metric", "revenue")
         time_filter = parsed.get("time_filter", "none")
         complexity = parsed.get("complexity", "simple")
 
-        # 3. Hypothesis Generation
+        # Hypothesis Generation
         hyp_service = HypothesisService(self.llm)
         hypotheses = hyp_service.generate(query, complexity)
 
-        # 4. Governance: get glossary definitions for NL2SQL prompt
+        # Governance & Context Injection
         glossary_defs = self._get_glossary_definitions()
-
-        # 5. Governance: mask PII from schema context
         gov_service = GovernanceService(self.db)
         schema_context = gov_service.mask_pii_in_context(schema_context, self.user.role)
+        context_block = self._build_session_context(session_id)
 
-        # 6. NL2SQL Generation
+        # NL2SQL Generation
         nl2sql_service = NL2SQLService(self.llm)
         explanation = None
         try:
-            sql, explanation = nl2sql_service.generate(query, schema_context, glossary_defs)
+            sql, explanation = nl2sql_service.generate(query, schema_context, glossary_defs, context_block)
         except Exception as e:
             logger.error("NL2SQL failed: %s", e)
             return self._error_response(query, str(e), session_id, start_time)
 
-        # 7. SQL Execution
+        # SQL Execution
         result_df, success = self.sql_service.execute(sql)
 
-        # 8. Hypothesis Testing (for complex queries)
+        # Hypothesis Testing (Complex Queries Only)
         hypothesis_results: List[dict] = []
         best_hypothesis: Optional[dict] = None
         if complexity == "complex":
@@ -79,29 +77,26 @@ class PipelineService:
             hypothesis_results = ht_service.test_hypotheses(hypotheses, metric, time_filter)
             best_hypothesis = ht_service.select_best(hypothesis_results)
 
-        # 9. Chart Generation
+        # Visualization
         chart_service = ChartService(self.llm)
         chart_df = result_df
         chart_type = chart_service.decide_chart_type(query, chart_df)
         chart_spec = chart_service.generate_chart(chart_df, chart_type)
 
-        # 10. Answer Synthesis
+        # Answer Synthesis & Confidence
         answer_service = AnswerSynthesisService(self.llm)
         insight = answer_service.compute_insight(result_df)
         answer = answer_service.synthesize(query, result_df, insight)
 
-        # 11. Confidence Scoring
         conf_service = ConfidenceService()
         row_count = len(result_df) if result_df is not None else 0
         confidence, confidence_reason = conf_service.compute(
             success, row_count, hypothesis_results, query
         )
 
-        # 12. Follow-up Suggestions
         followup_service = FollowupService(self.llm)
         follow_ups = followup_service.suggest(query, answer)
 
-        # 13. Build provenance
         provenance = ProvenanceInfo(
             source_tables=["payments"],
             row_count=row_count,
@@ -110,11 +105,13 @@ class PipelineService:
 
         elapsed_ms = (time.perf_counter() - start_time) * 1000
 
-        # 14. Persist to audit log
+        # Audit Logging
         data_records = result_df.head(100).to_dict(orient="records") if result_df is not None else []
 
         safe_parsed = sanitize_for_json(parsed)
-        safe_hypotheses = sanitize_for_json(hypotheses)
+        # Use hypothesis_results (objects with SQL) if available, otherwise fallback to raw hypotheses
+        hyp_to_save = hypothesis_results if hypothesis_results else hypotheses
+        safe_hypotheses = sanitize_for_json(hyp_to_save)
         safe_best_hypothesis = sanitize_for_json(best_hypothesis)
         safe_result_summary = sanitize_for_json({"data": data_records, "row_count": row_count, "explanation": explanation})
         safe_chart_spec = sanitize_for_json(chart_spec)
@@ -168,7 +165,7 @@ class PipelineService:
             sql=sql,
             explanation=explanation,
             data=data_records,
-            hypotheses=hypotheses,
+            hypotheses=[HypothesisResult(**h) for h in hypothesis_results] if hypothesis_results else [HypothesisResult(hypothesis=h) for h in hypotheses],
             best_hypothesis=(
                 HypothesisResult(**best_hypothesis) if best_hypothesis else None
             ),
@@ -185,6 +182,33 @@ class PipelineService:
         repo = GlossaryRepository(self.db)
         entries = repo.get_all()
         return [f"{e.term}: {e.sql_expression}" for e in entries]
+
+    def _build_session_context(self, session_id: Optional[str]) -> str:
+        """Fetch the last 3 queries from the session and format them as context."""
+        if not session_id:
+            return ""
+        try:
+            repo = QueryLogRepository(self.db)
+            # get_by_session returns newest-first; we want chronological order for the prompt
+            prior = repo.get_by_session(session_id, limit=3)
+            if not prior:
+                return ""
+            prior = list(reversed(prior))  # oldest first
+            lines = ["\nConversation Context (previous queries in this session):"]
+            for p in prior:
+                lines.append(f"- Q: {p.natural_language_query}")
+                if p.answer_text:
+                    # Truncate long answers
+                    short_answer = p.answer_text[:200].replace('\n', ' ')
+                    lines.append(f"  A: {short_answer}")
+            lines.append(
+                "Use this context to resolve pronouns like 'that', 'it', 'those', "
+                "or comparative words like 'compare', 'now show', 'only for'."
+            )
+            return "\n".join(lines) + "\n"
+        except Exception as e:
+            logger.warning("Failed to build session context: %s", e)
+            return ""
 
     def _error_response(
         self, query: str, error: str, session_id: Optional[str], start_time: float

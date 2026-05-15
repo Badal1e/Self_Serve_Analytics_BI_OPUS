@@ -154,7 +154,7 @@ def seed_catalog(session):
     columns = [
         DataCatalog(
             table_name="users", column_name="user_id", data_type="INTEGER",
-            description="Numeric identifier for the user", sample_values=[1001, 1050], is_pii=False,
+            description="Numeric identifier for the user", sample_values=["[MASKED]"], is_pii=True,
         ),
         DataCatalog(
             table_name="users", column_name="subscription_tier", data_type="VARCHAR",
@@ -178,7 +178,7 @@ def seed_catalog(session):
         ),
         DataCatalog(
             table_name="payments", column_name="user_id", data_type="INTEGER",
-            description="Numeric identifier for the user who initiated the payment", sample_values=[1001, 1050], is_pii=False,
+            description="Numeric identifier for the user who initiated the payment", sample_values=["[MASKED]"], is_pii=True,
         ),
         DataCatalog(
             table_name="payments", column_name="amount", data_type="FLOAT",

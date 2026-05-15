@@ -5,19 +5,24 @@ from app.core.exceptions import UnsafeSQLException
 
 class FakeLLM:
     total_tokens_used = 0
+
     def chat(self, prompt, **kwargs):
-        return "SELECT SUM(amount) as revenue FROM df WHERE status='SUCCESS'"
+        return (
+            '{"sql": "SELECT SUM(amount) as revenue FROM df WHERE '
+            'status=\'SUCCESS\'", "explanation": "test"}'
+        )
 
 
 class UnsafeFakeLLM:
     total_tokens_used = 0
+
     def chat(self, prompt, **kwargs):
-        return "DROP TABLE df; SELECT 1"
+        return '{"sql": "DROP TABLE df; SELECT 1", "explanation": "test"}'
 
 
 def test_generate_sql_clean():
     service = NL2SQLService(FakeLLM())
-    sql = service.generate("What is total revenue?", "amount: transaction amount")
+    sql, _ = service.generate("What is total revenue?", "amount: transaction amount")
     assert "SELECT" in sql
     assert "SUM(amount)" in sql
 
@@ -28,8 +33,9 @@ def test_generate_sql_blocks_unsafe():
         service.generate("Drop the table", "some schema")
 
 
-def test_clean_removes_markdown():
+def test_parse_json_response_removes_markdown():
     service = NL2SQLService(FakeLLM())
-    result = service._clean("```sql\nSELECT 1\n```")
-    assert "```" not in result
-    assert "SELECT 1" in result
+    raw = '```json\n{"sql": "SELECT 1", "explanation": "foo"}\n```'
+    sql, explanation = service._parse_json_response(raw)
+    assert "SELECT 1" in sql
+    assert explanation == "foo"

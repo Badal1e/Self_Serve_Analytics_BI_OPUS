@@ -1,16 +1,17 @@
 import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { Router } from '@angular/router';
 import { ApiService } from '../../core/services/api.service';
 import {
   QueryHistoryItem,
   PaginatedResponse,
 } from '../../core/models/query.model';
-import { MarkdownPipe } from '../../shared/pipes/markdown.pipe';
+import { AuthService } from '../../core/auth/auth.service';
 
 @Component({
   selector: 'app-history',
   standalone: true,
-  imports: [CommonModule, MarkdownPipe],
+  imports: [CommonModule],
   template: `
     <div class="history-page">
       <h2>Query History</h2>
@@ -25,36 +26,30 @@ import { MarkdownPipe } from '../../shared/pipes/markdown.pipe';
             <thead>
               <tr>
                 <th>ID</th>
-                <th>User</th>
+                @if (isAdmin()) { <th>User</th> }
                 <th>Query</th>
                 <th>Answer</th>
                 <th>Confidence</th>
                 <th>Date</th>
-                <th>Export</th>
               </tr>
             </thead>
             <tbody>
               @for (item of items; track item.id) {
-                <tr>
+                <tr class="clickable-row" (click)="openSession(item.session_id)">
                   <td>{{ item.id }}</td>
-                  <td>{{ item.user_email || 'You' }}</td>
+                  @if (isAdmin()) { <td>{{ item.user_email || 'N/A' }}</td> }
                   <td class="query-cell">{{ item.natural_language_query }}</td>
                   <td class="answer-cell">
-                    <div class="markdown-content" [innerHTML]="(item.answer_text | markdown) || 'N/A'"></div>
+                    <div class="answer-preview">
+                      {{ (item.answer_text ? (item.answer_text | slice:0:80) + '...' : 'N/A') }}
+                    </div>
                   </td>
                   <td>
                     @if (item.confidence_score !== null && item.confidence_score !== undefined) {
                       {{ (item.confidence_score * 100).toFixed(0) }}%
                     }
                   </td>
-                  <td>{{ item.created_at | date: 'medium' }}</td>
-                  <td>
-                    <div class="export-buttons">
-                      <button class="btn-sm" (click)="exportQuery(item.id, 'pdf')">PDF</button>
-                      <button class="btn-sm" (click)="exportQuery(item.id, 'excel')">Excel</button>
-                      <button class="btn-sm" (click)="exportQuery(item.id, 'html')">HTML</button>
-                    </div>
-                  </td>
+                  <td>{{ item.created_at | date: 'mediumDate' }}</td>
                 </tr>
               }
             </tbody>
@@ -81,13 +76,8 @@ import { MarkdownPipe } from '../../shared/pipes/markdown.pipe';
       th { background: #16213e; color: white; padding: 10px 14px; text-align: left; font-size: 0.85rem; }
       td { padding: 10px 14px; border-bottom: 1px solid #eee; font-size: 0.85rem; }
       .query-cell, .answer-cell { max-width: 250px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-      tr:hover td { background: #f8f9fa; }
-      .export-buttons { display: flex; gap: 4px; }
-      .btn-sm {
-        padding: 4px 8px; font-size: 0.75rem; border: 1px solid #ddd; background: white;
-        border-radius: 4px; cursor: pointer;
-      }
-      .btn-sm:hover { background: #e94560; color: white; border-color: #e94560; }
+      tr.clickable-row { cursor: pointer; }
+      tr.clickable-row:hover td { background: #f8f9fa; }
       .pagination {
         display: flex; justify-content: center; align-items: center; gap: 16px;
         margin-top: 16px;
@@ -102,6 +92,9 @@ import { MarkdownPipe } from '../../shared/pipes/markdown.pipe';
 })
 export class HistoryComponent implements OnInit {
   private api = inject(ApiService);
+  private auth = inject(AuthService);
+  private router = inject(Router);
+  readonly isAdmin = this.auth.isAdmin;
 
   items: QueryHistoryItem[] = [];
   page = 1;
@@ -134,17 +127,9 @@ export class HistoryComponent implements OnInit {
     this.loadPage();
   }
 
-  exportQuery(id: number, format: string): void {
-    this.api.getBlob(`/queries/${id}/export`, { format }).subscribe({
-      next: (blob) => {
-        const ext = format === 'excel' ? 'xlsx' : format;
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `query_${id}.${ext}`;
-        a.click();
-        URL.revokeObjectURL(url);
-      },
-    });
+  openSession(sessionId: string | undefined): void {
+    if (sessionId) {
+      this.router.navigate(['/dashboard'], { queryParams: { session: sessionId } });
+    }
   }
 }

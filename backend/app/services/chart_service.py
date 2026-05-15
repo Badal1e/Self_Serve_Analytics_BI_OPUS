@@ -55,6 +55,10 @@ class ChartService:
         if df is None or df.empty or chart_type == "none":
             return None
 
+        # A single-row result is a scalar — no chart is meaningful
+        if len(df) == 1:
+            return None
+
         df_plot = df.copy()
         df_plot.columns = [str(c).lower() for c in df_plot.columns]
 

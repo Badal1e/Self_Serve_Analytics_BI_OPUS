@@ -16,7 +16,9 @@ import { AuthService } from '../../../core/auth/auth.service';
       @if (auth.isAuthenticated()) {
         <div class="navbar-links">
           <a routerLink="/dashboard" routerLinkActive="active">Dashboard</a>
-          <a routerLink="/history" routerLinkActive="active">History</a>
+          @if (auth.isAdmin()) {
+            <a routerLink="/history" routerLinkActive="active">History</a>
+          }
           <a routerLink="/glossary" routerLinkActive="active">Glossary</a>
           <a routerLink="/catalog" routerLinkActive="active">Catalog</a>
           @if (auth.isAdmin()) {

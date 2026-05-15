@@ -8,12 +8,20 @@ import { HypothesisResult } from '../../../../core/models/query.model';
   imports: [CommonModule],
   template: `
     <div class="hypothesis-panel">
-      <h4>Hypotheses</h4>
-      <ul class="hypothesis-list">
+      <h4>Analytical Hypotheses</h4>
+      <div class="hypothesis-list">
         @for (h of hypotheses; track $index) {
-          <li>{{ h }}</li>
+          <div class="hypothesis-item">
+            <p class="hypothesis-text">{{ h.hypothesis }}</p>
+            @if (h.sql) {
+              <details class="sql-details">
+                <summary>View SQL used</summary>
+                <pre class="sql-block">{{ h.sql }}</pre>
+              </details>
+            }
+          </div>
         }
-      </ul>
+      </div>
 
       @if (bestHypothesis) {
         <div class="best-hypothesis">
@@ -35,6 +43,13 @@ import { HypothesisResult } from '../../../../core/models/query.model';
               {{ bestHypothesis.supported ? 'Supported' : 'Not Supported' }}
             </span>
           </div>
+
+          @if (bestHypothesis.sql) {
+            <details class="sql-details">
+              <summary>View SQL used</summary>
+              <pre class="sql-block">{{ bestHypothesis.sql }}</pre>
+            </details>
+          }
         </div>
       }
     </div>
@@ -42,28 +57,46 @@ import { HypothesisResult } from '../../../../core/models/query.model';
   styles: [
     `
       .hypothesis-panel {
-        background: white;
-        border-radius: 12px;
+        background: var(--bg-secondary);
+        border: 1px solid var(--border-light);
+        border-radius: var(--radius-lg);
         padding: 20px;
-        box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+        box-shadow: var(--shadow-sm);
       }
-      h4 { color: #1a1a2e; margin: 0 0 12px; }
-      .hypothesis-list { padding-left: 20px; color: #444; }
-      .hypothesis-list li { margin-bottom: 6px; line-height: 1.5; }
-      .best-hypothesis { margin-top: 16px; padding: 16px; background: #f8f9fa; border-radius: 8px; border-left: 4px solid #e94560; }
-      .hypothesis-text { font-weight: 500; margin-bottom: 8px; }
-      .stats { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; font-size: 0.85rem; }
-      .stat { padding: 4px 10px; background: #e9ecef; border-radius: 4px; }
-      .positive { color: #155724; background: #d4edda; }
-      .negative { color: #721c24; background: #f8d7da; }
-      .badge { padding: 4px 12px; border-radius: 12px; font-weight: 600; font-size: 0.8rem; }
+      h4 { color: var(--text-primary); margin: 0 0 12px; font-size: 0.875rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; }
+      .hypothesis-list { display: flex; flex-direction: column; gap: 12px; margin: 0 0 16px 0; }
+      .hypothesis-item { background: var(--bg-card, #fff); border: 1px solid var(--border-light); border-radius: var(--radius-md); padding: 12px; }
+      .hypothesis-item p { margin: 0; line-height: 1.5; font-size: 0.9rem; color: var(--text-secondary); }
+      .best-hypothesis { margin-top: 16px; padding: 16px; background: var(--bg-card, #fff); border-radius: var(--radius-md); border-left: 3px solid var(--accent-primary); }
+      .hypothesis-text { font-weight: 500; margin-bottom: 8px; font-size: 0.95rem; }
+      .stats { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; font-size: 0.8rem; margin-bottom: 12px; }
+      .stat { padding: 3px 8px; background: var(--bg-secondary); border-radius: 4px; border: 1px solid var(--border-light); }
+      .positive { color: #155724; background: #d4edda; border-color: #c3e6cb; }
+      .negative { color: #721c24; background: #f8d7da; border-color: #f5c6cb; }
+      .badge { padding: 3px 10px; border-radius: 12px; font-weight: 600; font-size: 0.8rem; }
       .badge.supported { background: #d4edda; color: #155724; }
       .badge.rejected { background: #f8d7da; color: #721c24; }
+      .sql-details { margin-top: 8px; }
+      .sql-details summary { cursor: pointer; font-size: 0.8rem; color: var(--text-tertiary); font-weight: 500; outline: none; user-select: none; }
+      .sql-details summary:hover { color: var(--accent-primary); }
+      .sql-block {
+        margin-top: 8px;
+        background: var(--bg-primary);
+        border: 1px solid var(--border-light);
+        border-radius: var(--radius-sm);
+        padding: 12px;
+        font-size: 0.8rem;
+        font-family: monospace;
+        white-space: pre-wrap;
+        word-break: break-all;
+        color: var(--text-secondary);
+        line-height: 1.5;
+      }
     `,
   ],
 })
 export class HypothesisPanelComponent {
-  @Input() hypotheses: string[] = [];
+  @Input() hypotheses: HypothesisResult[] = [];
   @Input() bestHypothesis: HypothesisResult | null = null;
 
   get changePctValue(): number {

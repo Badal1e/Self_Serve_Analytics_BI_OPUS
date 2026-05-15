@@ -146,3 +146,40 @@ a:hover {
   50% { opacity: 0.3; }
   100% { opacity: 0.6; }
 }
+
+/* -------------------------------------------------------------------------- */
+/* Markdown Content Highlights                                                 */
+/* -------------------------------------------------------------------------- */
+
+.markdown-content p {
+  margin: 0 0 10px 0;
+}
+.markdown-content p:last-child {
+  margin-bottom: 0;
+}
+.markdown-content strong {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+/* Number highlight: currency, percentages, large numbers */
+mark.hl-number {
+  background: linear-gradient(120deg, #dbeafe 0%, #bfdbfe 100%);
+  color: #1d4ed8;
+  border-radius: 4px;
+  padding: 1px 4px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  border: none;
+}
+
+/* Keyword highlight: Revenue, Growth, etc. */
+mark.hl-keyword {
+  background: linear-gradient(120deg, #fef3c7 0%, #fde68a 100%);
+  color: #92400e;
+  border-radius: 4px;
+  padding: 1px 4px;
+  font-weight: 600;
+  border: none;
+}
+

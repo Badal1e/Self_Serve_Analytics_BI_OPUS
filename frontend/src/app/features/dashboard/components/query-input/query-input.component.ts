@@ -1,10 +1,11 @@
-import { Component, Output, EventEmitter, Input } from '@angular/core';
+import { Component, Output, EventEmitter, Input, ViewChild, ElementRef } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { CommonModule } from '@angular/common';
 
 @Component({
   selector: 'app-query-input',
   standalone: true,
-  imports: [FormsModule],
+  imports: [FormsModule, CommonModule],
   template: `
     <div class="query-input-container">
       <div class="input-wrapper" [class.focused]="isFocused" [class.loading]="loading">
@@ -169,13 +170,19 @@ export class QueryInputComponent {
   @Input() loading = false;
   @Output() submitQuery = new EventEmitter<string>();
 
+  @ViewChild('queryInput') private queryInputRef!: ElementRef<HTMLTextAreaElement>;
+
   query = '';
   isFocused = false;
 
   onSubmit(event: Event): void {
-    event.preventDefault(); // Prevent newlines in textarea
-    if (this.query.trim() && !this.loading) {
-      this.submitQuery.emit(this.query.trim());
+    event.preventDefault();
+    const trimmed = this.query.trim();
+    if (trimmed && !this.loading) {
+      this.submitQuery.emit(trimmed);
+      // Clear and refocus for next follow-up
+      this.query = '';
+      setTimeout(() => this.queryInputRef?.nativeElement?.focus(), 50);
     }
   }
 }

@@ -2,11 +2,12 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.core.dependencies import get_current_user
+from app.core.dependencies import get_current_user, require_admin
 from app.core.security import hash_password, verify_password, create_access_token, create_refresh_token, decode_token
 from app.core.exceptions import BadRequestException, UnauthorizedException
 from app.models.user import User
 from app.repositories.user_repository import UserRepository
+from app.repositories.query_log_repository import QueryLogRepository
 from app.schemas.auth import (
     RegisterRequest,
     LoginRequest,
@@ -72,3 +73,26 @@ def refresh(body: RefreshRequest, db: Session = Depends(get_db)):
 @router.get("/me", response_model=UserResponse)
 def get_me(current_user: User = Depends(get_current_user)):
     return current_user
+
+
+@router.get("/users")
+def list_users(
+    _admin: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    """Admin-only: list all users with their session counts."""
+    user_repo = UserRepository(db)
+    qlog_repo = QueryLogRepository(db)
+    users = user_repo.get_all()
+    result = []
+    for u in users:
+        sessions = qlog_repo.get_sessions_by_user(u.id)
+        result.append({
+            "id": u.id,
+            "email": u.email,
+            "full_name": u.full_name,
+            "role": u.role,
+            "session_count": len(sessions),
+            "sessions": sessions,
+        })
+    return result

@@ -1,12 +1,13 @@
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
+from typing import List
 
 from app.core.database import get_db
 from app.core.dependencies import get_current_user
 from app.core.exceptions import NotFoundException
 from app.models.user import User
 from app.repositories.query_log_repository import QueryLogRepository
-from app.schemas.query import QueryRequest, QueryResponse, QueryHistoryItem
+from app.schemas.query import QueryRequest, QueryResponse, QueryHistoryItem, SessionSummary, ChatMessage, HypothesisResult
 from app.schemas.common import PaginatedResponse
 from app.services.pipeline_service import PipelineService
 
@@ -21,6 +22,70 @@ def submit_query(
 ):
     service = PipelineService(db, current_user)
     return service.run(body.query, session_id=body.session_id)
+
+
+@router.get("/sessions", response_model=List[SessionSummary])
+def list_sessions(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    repo = QueryLogRepository(db)
+    sessions = repo.get_sessions_by_user(current_user.id)
+    return [SessionSummary(**s) for s in sessions]
+
+
+@router.get("/sessions/{session_id}", response_model=List[ChatMessage])
+def get_session_chat(
+    session_id: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    repo = QueryLogRepository(db)
+    # Admin can view any session; regular users only their own
+    if current_user.role == "admin":
+        logs = repo.get_by_session_full_admin(session_id)
+    else:
+        logs = repo.get_by_session_full(session_id, current_user.id)
+    
+    if not logs:
+        raise NotFoundException("Session not found or access denied")
+        
+    return [
+        ChatMessage(
+            id=log.id,
+            query=log.natural_language_query,
+            answer=log.answer_text or "",
+            created_at=log.created_at,
+            chart=log.chart_spec,
+            sql=log.generated_sql,
+            confidence=log.confidence_score or 0.0,
+            hypotheses=[
+                HypothesisResult(**h) if isinstance(h, dict) else HypothesisResult(hypothesis=str(h))
+                for h in (log.hypotheses or [])
+            ],
+            best_hypothesis=(
+                HypothesisResult(**log.best_hypothesis)
+                if isinstance(log.best_hypothesis, dict)
+                else None
+            ),
+            follow_up_suggestions=log.follow_up_suggestions or [],
+        ) for log in logs
+    ]
+
+
+@router.delete("/sessions/{session_id}", status_code=204)
+def delete_session(
+    session_id: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    repo = QueryLogRepository(db)
+    deleted = repo.delete_session(
+        session_id,
+        user_id=None if current_user.role == "admin" else current_user.id,
+    )
+    if not deleted:
+        raise NotFoundException("Session not found or access denied")
 
 
 @router.get("", response_model=PaginatedResponse[QueryHistoryItem])

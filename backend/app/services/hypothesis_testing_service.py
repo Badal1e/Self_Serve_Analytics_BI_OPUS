@@ -65,6 +65,7 @@ class HypothesisTestingService:
             "previous": previous,
             "change_pct": round(change, 2),
             "supported": supported,
+            "sql": sql,
         }
 
     def _generate_test_plan(self, hypothesis: str, metric: str, time_filter: str) -> Optional[dict]:

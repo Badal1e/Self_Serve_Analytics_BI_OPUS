@@ -13,3 +13,7 @@ class UserRepository(BaseRepository[User]):
     def get_by_email(self, email: str) -> Optional[User]:
         stmt = select(User).where(User.email == email)
         return self.db.scalars(stmt).first()
+
+    def get_all(self) -> list:
+        stmt = select(User).order_by(User.full_name)
+        return list(self.db.scalars(stmt).all())

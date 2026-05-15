@@ -15,6 +15,7 @@ class HypothesisResult(BaseModel):
     previous: Optional[float] = None
     change_pct: Optional[float] = None
     supported: Optional[bool] = None
+    sql: Optional[str] = None
 
 
 class ProvenanceInfo(BaseModel):
@@ -29,7 +30,7 @@ class QueryResponse(BaseModel):
     sql: Optional[str] = None
     explanation: Optional[str] = None
     data: List[Any] = []
-    hypotheses: List[str] = []
+    hypotheses: List[HypothesisResult] = []
     best_hypothesis: Optional[HypothesisResult] = None
     confidence: float = 0.0
     confidence_reason: Optional[str] = None
@@ -47,5 +48,26 @@ class QueryHistoryItem(BaseModel):
     confidence_score: Optional[float] = None
     created_at: Optional[datetime] = None
     user_email: Optional[str] = None
+    session_id: Optional[str] = None
 
     model_config = {"from_attributes": True}
+
+
+class SessionSummary(BaseModel):
+    session_id: str
+    query_count: int
+    first_query: str
+    last_activity: datetime
+
+
+class ChatMessage(BaseModel):
+    id: int
+    query: str
+    answer: str
+    created_at: datetime
+    chart: Optional[dict] = None
+    sql: Optional[str] = None
+    confidence: float = 0.0
+    hypotheses: List[HypothesisResult] = []
+    best_hypothesis: Optional[HypothesisResult] = None
+    follow_up_suggestions: List[str] = []

@@ -45,7 +45,7 @@ class AnswerSynthesisService:
             prompt += f"\n\nAlso include this important note in your response: {anomaly_text}"
 
         try:
-            return self.llm.chat(prompt, max_tokens=300)
+            return self.llm.chat(prompt, max_tokens=150)
         except Exception as e:
             logger.warning("Answer synthesis failed: %s", e)
             return "Unable to generate a natural language answer at this time."
